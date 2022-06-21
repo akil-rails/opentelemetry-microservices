@@ -1,0 +1,56 @@
+version: "3"
+services:
+
+  # # Jaeger
+  # jaeger-all-in-one:
+  #   image: jaegertracing/all-in-one:latest
+  #   ports:
+  #     - "16686:16686"
+  #     - "14268"
+  #     - "14250"
+
+  # # Collector
+  # otel-collector:
+  #   image: otel/opentelemetry-collector:latest
+  #   command: ["--config=/etc/otel-collector-config.yaml"]
+  #   volumes:
+  #     - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+  #   ports:
+  #     - "13133:13133" # Health_check extension
+  #     - "4317:4317"   # OTLP gRPC receiver
+  #     - "55680:55680" # OTLP gRPC receiver alternative port
+  #   depends_on:
+  #     - jaeger-all-in-one
+
+  adot-collector:
+    image: public.ecr.aws/aws-observability/aws-otel-collector:latest
+    command: ["--config=/etc/otel-agent-config.yaml"]
+    environment:
+      - AWS_REGION=eu-central-1
+    ports:
+      - "13133:13133" # Health_check extension
+      - "4317:4317"   # OTLP gRPC receiver
+      - "55680:55680" # OTLP gRPC receiver alternative port
+    volumes:
+      - ./otel-adot-collector.yaml:/etc/otel-agent-config.yaml
+      - ~/.aws:/root/.aws
+
+  is-odd:
+    image: quarkus/is-odd
+    environment:
+      - QUARKUS_OPENTELEMETRY_TRACER_EXPORTER_OTLP_ENDPOINT=http://adot-collector:4317
+    ports:
+      - "8080:8080"
+    depends_on:
+      - adot-collector
+
+  is-even:
+    image: quarkus/is-even
+    environment:
+      - QUARKUS_OPENTELEMETRY_TRACER_EXPORTER_OTLP_ENDPOINT=http://adot-collector:4317
+      - QUARKUS_REST_CLIENT_IS_ODD_API_URL=http://is-odd:8080/
+    ports:
+      - "8081:8080"
+    depends_on:
+      - is-odd
+      - adot-collector
