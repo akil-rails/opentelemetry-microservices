@@ -3,7 +3,6 @@ package me.preissler.thomas.isodd;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 
-import io.opentelemetry.contrib.awsxray.AwsXrayIdGenerator;
 import io.opentelemetry.sdk.trace.IdGenerator;
 
 @Singleton
